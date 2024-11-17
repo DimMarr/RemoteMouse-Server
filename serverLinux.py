@@ -5,6 +5,9 @@ from tkinter import ttk
 from pynput.mouse import Button, Controller as MouseController
 from pynput.keyboard import Controller as KeyboardController, Key
 import threading
+import pystray
+from pystray import MenuItem as item
+from PIL import Image, ImageDraw
 
 HOST = '0.0.0.0'
 PORT = 65432
@@ -58,11 +61,13 @@ label_key.pack(padx=10, pady=5)
 screen_width = root.winfo_screenwidth()
 screen_height = root.winfo_screenheight()
 
+
 # Fonction pour mettre à jour le texte dans les widgets
 def update_label(label, text, color=None):
     label.config(text=text)
     if color:
         label.config(fg=color)
+
 
 def handle_key_action(message):
     """Handle key actions based on the message."""
@@ -74,6 +79,7 @@ def handle_key_action(message):
     except Exception as e:
         error_message = f"Erreur d'action clavier : {e}"
         update_label(label_errors, error_message)
+
 
 def server_loop():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -164,13 +170,44 @@ def server_loop():
             except Exception as e:
                 print(f"Erreur dans la connexion : {e}")
 
+
 # Lancer le serveur dans un thread séparé
 def start_server():
     server_thread = threading.Thread(target=server_loop, daemon=True)
     server_thread.start()
 
-# Démarrage du serveur
+
+def create_image():
+    # Chargez l'image depuis le chemin relatif
+    icon_path = "img/logo/logoRemoteMouse.png"
+    image = Image.open(icon_path)
+    image = image.resize((64, 64))
+    return image
+
+def exit_action(icon):
+    icon.stop()
+    root.quit()
+
+# Fonction pour restaurer la fenêtre Tkinter
+def restore_window():
+    root.deiconify()
+
+def on_closing():
+    root.withdraw()
+
+def create_tray_icon():
+    icon = pystray.Icon("Logo", create_image(), menu=pystray.Menu(
+        item('Restaurer', restore_window),
+        item('Quitter', exit_action)
+    ))
+    icon.run()
+
+
 start_server()
 
+# Lancer l'icône dans un thread séparé
+tray_thread = threading.Thread(target=create_tray_icon, daemon=True).start()
+
 # Lancement de l'interface Tkinter
+root.protocol("WM_DELETE_WINDOW", on_closing)
 root.mainloop()
